@@ -1,0 +1,581 @@
+---
+title: "Strings Workshop"
+author: "Lindsay Katz"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    number_sections: true
+  pdf_document:
+    number_sections: true
+bibliography: ref.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Background and Overview
+
+In programming, a string is any value written in single or double quotes, like "stat 101", 'doss' or "2023". The string data type exists to capture text data, as opposed to numeric data which we are most often used to working with in statistics. 
+
+In this workshop, you will learn some helpful functions primarily from the `stringr` package [@stringr], which allow you to explore and modify text data. We will also go over an introduction to regular expressions, which is a super powerful tool that allows us to detect and match patterns in text data in a generalized and efficient manner.
+
+Using a number of examples and exercises, this workshop will focus on:
+
+  1. detecting matches,
+  2. extracting matches,
+  3. string mutation, and
+  4. string-based separation
+  
+The first three sections include introductions to `stringr` and regular expressions with examples, and the fourth section will apply some of what we've learned to a more complicated text data example.
+
+# The `stringr` package
+
+The `stringr` package is part of the series of packages within the `tidyverse` [@tidyverse]. You can load it in on its own, or by loading the `tidyverse` package:
+
+```{r, message=FALSE}
+library(tidyverse)
+```
+
+In this section we will cover some key functions which are very useful for string manipulation. Note that the first argument taken by each of these functions is `string`, which is an input vector.
+
+Let's define a vector of strings to explore these functions with.
+
+```{r}
+desserts <- c("apple pie", "cheesecake", "french macarons", "brownies", "strawberry cupcakes")
+```
+
+## Detecting matches 
+
+### `str_detect` - detect matches {#detect}
+
+When working with strings, we may wish to identify only the strings that contain a specific pattern of characters. The `str_detect` function allows us to do just that. 
+
+This function takes two arguments: `string` (a character vector), and `pattern` (the pattern of characters to detect). 
+
+Note that strings are *case sensitive* - this applies to the input vector of text data _and_ any other string patterns passed to `stringr` functions.
+
+```{r}
+# detect which strings contain "cake"
+str_detect(desserts, "cake")
+```
+
+This function also comes in handy when we have a string variable within a dataset, and we want to filter for rows based on that variable which contain a specific string pattern. We can easily turn our character vector into a dataframe using the `tibble` function.
+
+```{r}
+# turn our character vector into a tibble
+tibble(desserts)
+```
+
+In the above example, two elements are returned as `TRUE`, and similarly in this example, filtering with the same expression leaves us with two rows in the dataset.
+
+```{r}
+# turn our character vector into a tibble, and filter using str_detect
+tibble(desserts) %>% filter(str_detect(desserts, "cake"))
+```
+
+Let's define a new character vector so you can try some exercises on your own:
+
+```{r}
+fruits <- c("cherries", "green grapes", "granny smith apples", "watermelon", "pear")
+```
+
+Exercise: Using `str_detect`, detect which strings in the `fruits` vector contain the pattern "es".
+
+```{r}
+
+```
+
+### `str_count` - count the number of matches in a string
+
+We may wish to count the number of times a certain pattern or character is detected in a string. The first argument as usual is `string`, and the second argument is once again `pattern`. For example, we can use this function to get a count for the number of vowels present in each string of our character vector. Using the "or" operator, we can obtain a count of the total number of matches to _any_ of the characters specified.
+
+```{r}
+# count number of vowels detected in each string
+str_count(desserts, "a|e|i|o|u")
+```
+
+Note: if we hadn't used the "or" operator and just passed a _vector_ of vowels to count for, only the first one detected in each string would be counted (e.g. only "a"'s would be counted in "apple pie", because it is the first vowel detected in that string).
+
+When working with a dataset, we can use this function in combination with `mutate` to create a new variable with the resulting counts.
+
+```{r}
+# turn vector into a tibble, and create n_vowels variable
+tibble(desserts) %>% mutate(n_vowels = str_count(desserts, "a|e|i|o|u"))
+```
+
+Exercise: Using `str_count`, get a count for the number of letter "g"'s or "r"'s detected in each element of the `fruits` vector.
+
+```{r}
+
+```
+
+## Extracting matches 
+
+### `str_extract` and `str_extract_all` - extract matches
+
+In the previous examples, the output were either binary or numeric in nature. We can also extract the content of those matches from the strings directly. Note that `str_extract` only provides you with the first match, while `str_extract_all` gives all detected match content. Both functions take the `string` and `pattern` arguments we've already seen, but the `str_extract_all` function can take a third `simplify` argument (boolean) which will change the output format.
+
+```{r}
+# extract matches for the word "cake"
+str_extract(desserts, "cake")
+```
+
+```{r}
+# extract the first match for "ca" or "ch" present in each string
+str_extract(desserts, "ca|ch") 
+```
+
+```{r}
+# extract all matches for "ca" or "ch" present in each string
+# simplify = TRUE returns a character matrix as opposed to a list of character vectors (the default)
+str_extract_all(desserts, "ca|ch", simplify = TRUE) 
+```
+
+Notice with the use of `str_extract_all`, we get all matches rather than just the first one detected in the string.
+
+Exercise: Using `str_extract_all`, extract all occurrences of the pattern "gr" from the `fruits` input vector.
+
+```{r}
+
+```
+
+### `str_sub` - extract sub-strings from a character vector
+
+This function allows you to extract a portion of characters from each string in your character vector by specifying the position of the part you wish to extract. The first argument is the input vector, and then you can specify either a start or an end position, or both.
+
+```{r}
+# extract first 7 elements in each string
+str_sub(desserts, start=1, end=7)
+```
+
+```{r}
+# extract just the first two characters in the string
+str_sub(desserts, end=2)
+```
+
+```{r}
+# extract the whole string up to and including the 2nd-last character
+str_sub(desserts, end=-2)
+```
+
+Exercise: Using `str_sub`, extract the first 4 characters of each string from `fruits`.
+
+```{r}
+
+```
+
+## Mutating strings
+
+### `str_replace` and `str_replace_all` - replace elements of a string
+
+We may want to modify a component of a string by replacing the specified character(s) (i.e. pattern) with something else. The `str_replace` function allows you to replace the first occurrence of that pattern, while `str_replace_all` allows you to replace all occurrences of that pattern. Both functions take 3 arguments: `string` (input vector), `pattern` (pattern to detect), and `replacement` (thing to replace that pattern with).
+
+```{r}
+# replace the first detected a or e with an asterisk
+str_replace(desserts, "a|e", "*")
+```
+
+Notice that only the first detected match of either "a" or "e" is replaced above with an asterisk. For example while "apple pie" has both letters "a" and "e", the first match detected and only element replaced is the letter "a" at the beginning. If we use `str_replace_all` instead, all occurrences of either "a" or "e" will be replaced.
+
+```{r}
+# replace all detected a's or e's with an asterisk
+str_replace_all(desserts, "a|e", "*")
+```
+
+Exercise: Using `str_replace`, replace the first vowel detected in each string from `fruits` with a question mark.
+
+```{r}
+
+```
+
+### `str_to_upper`, `str_to_lower`, and `str_to_title` - convert the case of strings
+
+These functions take up to 2 arguments - the input vector (required), and a locale which is a language expectation where the default is English. 
+
+We can convert entire strings to upper case...
+
+```{r}
+# convert to upper case
+str_to_upper("doss")
+```
+
+...or lower case...
+
+```{r}
+# convert to lower case
+str_to_lower("StAts")
+```
+
+...or title case - which capitalizes the first letter of each word.
+
+```{r}
+# convert to title case
+str_to_title("university of Toronto")
+```
+
+Exercise: Using `str_to_upper`, convert each string in `fruits` to upper case.
+
+```{r}
+
+```
+
+### `str_remove` and  `str_remove_all` - remove characters from a string
+
+These functions allow you to remove characters from a string or vector of strings.
+
+```{r}
+# remove first occurrence of the letter t
+str_remove("University of Toronto", "t")
+```
+
+```{r}
+# remove all occurrences of the letter t
+str_remove_all("University of Toronto", "t")
+```
+
+Recall that patterns are case sensitive, so we can use the `str_to_lower` function in combination with `str_remove_all` to remove all letter t's from the string. Another way to do this without modifying the case of the resulting string is to pass "`t|T`" as the `pattern` argument.
+
+```{r}
+# remove all occurrences of the letter t
+str_remove_all(str_to_lower("University of Toronto"), "t")
+```
+
+Exercise: Using `str_remove_all`, remove all spaces between words present in the `fruits` vector.
+
+```{r}
+
+```
+
+### `str_squish` - trim outer whitespace and clean internal whitespace
+
+When working with messy text data, you may find unwanted whitespace (i.e. tabs, spaces, new lines) embedded in the body of text. Notice that in the string `"  hello   world!       "`, in addition to whitespace on either end of the string, there is also excess whitespace between the "hello" and "world". `str_squish` allows us to clean all of this up. The only argument required is the input vector.
+
+```{r}
+# removes whitespace from both sides and replaces internal whitespace with single space
+str_squish("  hello   world!       ")
+```
+
+Exercise: Using `str_squish` and `str_to_title`, remove excess whitespace from the following string: "   Department       OF statiSTical   sciences ", and convert it to title case.
+
+```{r}
+
+```
+
+### `str_split` - split strings into sub-strings
+
+Finally, this function allows us to split strings up based on a specified pattern. Here, we split desserts up into two parts wherever a space is detected.
+
+```{r}
+str_split(desserts, " ", simplify = TRUE)
+```
+
+Exercise: Using `str_split`, split all strings in `fruits` into sub-strings wherever a space exists.
+
+```{r}
+
+```
+
+# What are regular expressions?
+
+Regular expressions (regex) are a concise language designed to allow us to search for patterns within strings. These are sequences of characters used to search text for precise matches. Creating a regular expression allows us to check that the string conforms to the specific pattern we have designed. 
+
+For example, if you are subscribing to a newsletter, the website will prompt you to enter a valid email address. If your input doesn’t match the expected regular expression pattern associated with an email address (e.g. have an '@' symbol and end with '.com', '.ca', '.org', etc.), that website will throw an error. 
+
+When you use functions from the `stringr` package and provide a pattern argument as we have done in the previous examples, this pattern is itself a regular expression. Thus, understanding the proper syntax for regular expressions is crucial when it comes to more complicated pattern matching.
+
+## Regex fundamentals
+
+Below is a list of some common character classes (those in square brackets) and match characters. The backslashes are written to denote special characters, because as you'll see later on, many commonly used punctuation characters like periods, parentheses and question marks have special meanings in the context of regular expressions. The technical term for this backslash use is to "escape" special characters.
+
+- `[:alpha:]` - letters
+- `[:lower:]` - lowercase letters
+- `[:upper:]` - uppercase letters
+- `[:alnum:]` - numbers and letters
+- `[:space:]` - space characters
+- `[:blank:]` - space and tab, but not a newline
+- `[:digit:]` - digits
+- `[:punct:]` - punctuation
+    - This includes: periods, commas, colons, slashes, exclamation and question marks, parentheses, quotation marks and more
+- `\\.` - period
+- `\\!` - exclamation mark
+- `\\?` - question mark
+-` \\\\` - backslash
+- `\\(` and `\\)` - parentheses
+- `\\n` - newline
+- `\\d` - digit
+- `\\s` - space
+- `\\t` - tab
+- `.` - matches every character except a newline
+    - this special meaning of a period is a prime example of why we need to escape it using backslashes when we want to match for one in a string
+
+Note that in base R, many functions require classes to be written with two sets of square brackets like "`[[:alpha:]]`" [@stringr].
+
+## Anchors
+
+By default, regular expression patterns will detect a match in any part of the string. In some cases, you may wish to "anchor" the regular expression to specify the match to be detected from the start or end of the string. 
+
+To anchor the regular expression so it searches for a match at the start of the string, use a `^` character before the pattern to be matched. To anchor to match the end of the string, use a `$` character at the end of the pattern to be matched. You can use both anchors if you want to force a regular expression to match only a complete string which matches the specified pattern.
+
+For example, consider the string "doss". If we want to extract the last letter of that string ("s"), we can use the regular expression `[:alpha:]$` to do so. If we just use the regex `[:alpha:]` without the anchor, the first letter match in the string will be returned which in our case is the letter "d".
+
+## Quantifiers
+
+Sometimes we want to match for a repeated character or character class in a string, such as three consecutive digits. Adding quantifiers to regular expressions allows us to do so. Here are a few examples of quantifiers that we will use later on, however there are others you can read about [here](https://www.regular-expressions.info/refrepeat.html).
+
+  1. `x{m}` - exactly m
+  2. `x{m,n}` - between m and n
+  3. `x{m,}` - at least m (i.e. m or more)
+  4. `x+` - one or more
+  
+For instance, if we are given a string containing a phone number "416-978-2190" and want to match the set of four digits in a row, we would use the regular expression "`\\d{4}`", or equivalently, "`[:digit:]{4}`".
+  
+## Lookarounds
+
+The last component of regular expressions we will cover is lookarounds. These allow you to improve the precision of matches by specifying what should or should not come before or after a pattern. There are two types of lookarounds: lookaheads (what follows a pattern) and lookbehinds (what precedes a pattern). Lookarounds can be positive or negative.
+
+The table below summarizes each type of lookaround, and the corresponding regex syntax [@stringr].
+
+```{r, echo=FALSE}
+tibble("type" = c("positive lookbehind",
+                  "negative lookbehind",
+                  "positive lookahead",
+                  "negative lookahead"),
+       "regex syntax" = c("(?<=y)x",
+                   "(?<!y)x",
+                   "x(?=y)",
+                   "x(?!y)"), 
+       "description" = c("pattern x is preceded by pattern y",
+                        "pattern x is not preceded by pattern y",
+                        "pattern x is followed by pattern y",
+                        "pattern x is not followed by pattern y")) %>% 
+  knitr::kable() 
+```
+
+# Using regex patterns in `stringr` functions
+
+Now that we have reviewed some of the basics of regular expressions, let's put them into practice using some of the same `stringr` functions we looked at earlier. As you'll see, using regex patterns allows us to search for more precise matches in bodies of text, in a generalizable manner. What I mean by generalizable in this context is that these patterns can be used to detect matches or make changes on any vector of strings. This is because we are not in essence "hard-coding" patterns to search for based on one specific character vector, where those patterns are only applicable to that vector, but rather, we are specifying a general form.
+
+## `str_detect`
+
+Before, we used this function to detect strings that contained the regex pattern "cake". Now, let's only detect those where "cake" is not followed by another letter. To do this, we use a negative lookahead.
+
+```{r}
+# only detecting cake when it isn't followed by another letter
+str_detect(desserts, "cake(?![:alpha:])")
+```
+
+Notice that when we did this in the very first example, two strings matched - "cheesecake" and "strawberry cupcakes". Now with the negative lookahead, only "cheesecake" matches based on our pattern.
+
+Now, let's use an anchor to detect those strings which end in either "e" or "es".
+
+```{r}
+# ends with e or es
+str_detect(desserts, "e$|es$")
+```
+
+Exercise: Using `str_detect` with an anchor and positive lookahead, detect the strings in `fruits` which start with the pattern "gr" which is followed by a letter "a".
+
+```{r}
+
+```
+
+## `str_extract`
+
+Using regex, let's extract the following match: one or more letters (`[:alpha:]+`) which are preceded by a single space (`[:space:]`) that continue to the end of the string. (Note: you could also use a literal space `" "` or `\\s` for this).
+
+```{r}
+# extract all letters until end of string preceded by a space
+str_extract(desserts, "(?<=[:space:])[:alpha:]+$")
+```
+
+What happens if we don't use the lookbehind?
+
+```{r}
+# same as above but remove lookbehind
+str_extract(desserts, "[:alpha:]+$")
+```
+
+In strings with only one word, the function returns that whole string, and in those with two words, the function returns everything from after the space. So when we do use the lookbehind, we are increasing the precision of the match meaning we only extract the last word in those strings with multiple words (which contain a space).
+
+Now, what happens if we don't use the anchor?
+
+```{r}
+# just grab one or more letters, don't specify anchor or lookbehind
+str_extract(desserts, "[:alpha:]+")
+```
+
+As you can see, for those strings with two words, the specified pattern extracts the _first_ match of one or more letters which is of course detected in the first word. The anchor to the end of the string is what tells the function to look for the match in the final word of that string.
+
+Exercise: Using `str_extract`, extract strings from `fruits` which are composed _only_ of between 4 and 8 letters. Hint: use anchors.
+
+```{r}
+
+```
+
+# Parliamentary Debates Example
+
+In this section we are going to put what we have learned into practice with a more complicated data example. 
+
+The data we will be working with is based on a research project I have been working on with Dr. Rohan Alexander, where we have developed scripts to build a database containing 24 years of proceedings of the Australian Parliamentary debates. 
+
+These parliamentary debate records are essentially verbatim transcripts of everything said in parliament that day, making them a really valuable source for text analysis purposes, which is why we have worked to create this accessible database which is ready to be analyzed. The official name for these records is "Hansard". 
+
+As you will see in the data, there is one row for each unique debate that took place in parliament that day, with a number of columns including specific details on the Member of Parliament (MP) whose turn it was to speak (i.e. the MP who initiated each debate), such as their political party and full name.
+
+To begin, let's read in the CSV file provided called "`hansard_ex.csv`". This is a subset of 10 speeches that took place in the Australian House of Representatives proceedings on November 30th 2021.
+
+```{r}
+# read in hansard example data
+hansard <- read_csv("../data/hansard_ex.csv", show_col_types = F)
+```
+
+```{r}
+# view data
+hansard
+```
+
+The "body" variable is what contains the text associated with each speech. 
+
+```{r}
+# just look at body variable
+hansard %>% select(body)
+```
+
+You might have noticed some elements of the data that could be cleaned up. For example, the `time.stamp` variable is missing for every row, and in each `body` cell, there is additional information on the MP speaking preceding the actual spoken content, which should be removed from this column. 
+
+Before we start cleaning the `body` variable (which is the most complex and messy), let's run through a couple simpler exercises.
+
+First, let's split the `name` column into two columns: one with the MPs first name, and one with their surname. 
+
+```{r}
+# split first and last name
+# note - you can use argument "remove = F" to maintain original column
+hansard %>% separate(name, c("last_name", "first_name"), sep=", ") %>% 
+  select(last_name, first_name)
+```
+
+Notice that the "MP" has carried over into the `first_name` column. Let's remove that using the `str_remove` function we learned earlier.
+
+```{r}
+# separate first and last name, remove " MP" from first name
+hansard %>% separate(name, c("last_name", "first_name"), sep=", ") %>% 
+  mutate(first_name = str_remove(first_name, " MP")) %>% 
+  select(last_name, first_name)
+```
+
+As you saw earlier, the time stamp variable is missing for all rows. However, there is a time stamp associated with each speech that is embedded at the beginning of each body of text. Using regular expressions, let's extract those and add them to the time stamp column.
+
+```{r}
+# extract time stamp from body
+hansard <- hansard %>% mutate(time.stamp = str_extract(body, "\\d{2}:\\d{2}"))
+
+# look at the new dataframe's time stamp column
+select(hansard, time.stamp)
+```
+
+Exercises: 
+
+  1. Using `str_count`, create a column of the count of digits found in each `name.id`.
+  2. Create new variables containing the first and last initial for each MP. (Hint: use a positive lookbehind to extract the first initial)
+  
+```{r}
+
+```
+
+```{r}
+
+```
+
+Now for a more complicated task, let's look more closely at the `body` variable. For this task we are just going to work with the `body` associated with the last row in our dataframe. 
+
+```{r, eval=F, echo=F}
+# not using this for the workshop but this is how you pull the last row's body cell 
+hansard %>% slice(n()) %>% pull(body)
+```
+
+```{r}
+# just grab the last row for this task
+last_speech <- hansard %>% slice(n())
+```
+
+Here is the entire contents of that cell:
+
+"**Mr FLETCHER (Bradfield—Minister for Communications, Urban Infrastructure, Cities and the Arts) (14:55):**  I thank the Prime Minister for the opportunity to respond to the question asked by the member for Sydney. Our model will deal with allegations of serious criminal corruption at the Commonwealth level. That is what our model will do. It's a well-developed, serious, substantiated model, and if the opposition were serious about engaging in it—*Ms Kearney interjecting—***The SPEAKER:**  The member for Cooper is warned.**Mr FLETCHER:**  if the opposition were serious about tackling the risk and challenge of—*Mr Perrett interjecting—***Mr FLETCHER:**  suspected serious criminal corruption at the Commonwealth level—**The SPEAKER:**  The member for Moreton is warned.**Mr FLETCHER:**  they would engage seriously with this government on what we've put, on the full text, the 349 pages of legislation which have been out there for many months, rather than engage in a series of political stunts. One side of this House is genuine and serious minded about engaging on the issue of suspected Commonwealth criminal corruption. One side of this House has a detailed exposure draft of legislation which is out there, ready to go. The other side of this House is sitting on its hands doing nothing. Those opposite need to take a good hard look at themselves."
+
+As you can see from the bolded text, this body content contains statements made by a number of MPs, not just Mr Fletcher (the MP whose turn it was to speak). To improve the quality of our dataset, we would like to separate each individual statement onto its own row. This is exactly what Dr. Alexander and I did in the making of our database - and I am going to show you how for this one example.
+
+For clarity, here is a list of the unique strings on which we want to separate this body of text:
+
+  - "Ms Kearney interjecting—"
+  - "Mr Perrett interjecting—"
+  - "Mr FLETCHER:"
+  - "The SPEAKER:"
+
+Notice that there are two general forms here:
+
+  1. a title (Mr/Ms/The) + a surname + a colon
+  2. a title (Mr/Ms/The) + a surname + "interjecting" followed by an emdash 
+
+We can capture and extract these patterns using what we learned about regular expressions.
+
+Let's use `str_extract_all` to create a list of these patterns directly from the body of text. Then, we will use the `separate_rows` function from `tidyr` to split the `body`.
+
+```{r}
+# extract unique strings to split body on, store as character vector
+to_separate <- str_extract_all(last_speech$body, "[:upper:][:lower:]{1,2} [:alpha:]+:|[:upper:][:lower:]{1,2} [:alpha:]+ interjecting—") %>% 
+  unlist() %>% unique()
+
+# view vector
+to_separate
+```
+
+Now that we have a list of phrases we want to separate the text on, we can do so easily with `separate_rows`. You'll notice that each element of the list is pasted within the positive lookahead syntax. If we don't do this, we lose the text we split on. We want to keep this text because it contains valuable information on who is making each statement, which we can later use. (Optional exercise: remove the "`(=`" and "`)`" elements from the code below to see the difference.)
+
+```{r}
+# separate rows on character vector
+last_speech <- separate_rows(last_speech, body, sep=paste0("(?=", to_separate, ")", collapse="|"))
+
+# view updated dataframe
+last_speech
+```
+
+As you can see, the original body of text is now separated into 8 different rows, and has been split correctly based on the name patterns we extracted.
+
+You might also notice that in the separating process, the values from all other variables in the original row carried over into the new rows. Since we want the correct `name`, `name.id`, `electorate` and `party` details for each person speaking, we can clean this up. For simplicity, let's just do this for the `electorate` column using what we have - the correct details for Paul Fletcher.
+
+```{r}
+last_speech %>% mutate(electorate = ifelse(str_detect(body, "^Mr FLETCHER"),
+                                           electorate,
+                                           NA)) %>% 
+  select(electorate, body)
+```
+
+Exercises:
+
+  1. Add a flag variable called `interject` that takes on a value 1 if the body of text ends in the pattern "interjecting—", and 0 otherwise.
+  2. For those rows where `interject==0`, remove the name pattern preceding the body of text (i.e. everything from the beginning of the string up to and including the colon).
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+## More on `stringr`
+
+- Use `str_order` or `str_sort` to order a character vector based on some specified locale (i.e. language) - the default is English.
+    - `str_order` returns a vector of ordered indices, while `str_sort` returns a sorted character vector.
+- Strings can be combined using the `str_c` function.
+    - The first arguments must be the character vectors of strings you wish to combine.
+    - Use the `sep` argument to specify a character to be inserted between input vectors. 
+    - Alternatively, use the `collapse` argument to specify a character which will be used to combine input vectors into single string.
+- `str_trim` is useful for cleaning up a string's outer whitespace
+    - The first argument is the input.
+    - The second is `side` (which side to trim whitespace from). This can be either `both`, `left`, or `right`.
+- For more information, check out this really useful `stringr` [cheat sheet](https://evoldyn.gitlab.io/evomics-2018/ref-sheets/R_strings.pdf)
+
+## References
+
