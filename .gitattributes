@@ -1,2 +1,2 @@
 *.html linguist-detectable=false
-*.text linguist-detectable=false
+*.Lex linguist-detectable=false
